@@ -1,0 +1,134 @@
+# pagewatch
+
+Get an alert on your phone when certain words appear on a web page.
+
+pagewatch checks the page every hour. When one of your words shows up, it alerts you
+by **phone notification**, **text message (SMS)** or **email**. Each word triggers one
+alert when it first appears, not one every hour.
+
+It works on **Windows** and **Mac**. There is nothing else to install.
+
+---
+
+## Get started (about 5 minutes)
+
+### Windows
+
+1. Download **[pagewatch-windows.exe](https://github.com/alonazar/pagewatch/releases/latest/download/pagewatch-windows.exe)**.
+2. Double-click the downloaded file.
+   - If Windows shows **"Windows protected your PC"**, click **More info**, then **Run anyway**.
+     (This appears because pagewatch is a small free program, not a paid, signed one.)
+3. Answer the questions in the window that opens.
+
+To change settings later, open the **Start menu** and type **pagewatch**.
+
+### Mac
+
+1. Download **[pagewatch-mac.zip](https://github.com/alonazar/pagewatch/releases/latest/download/pagewatch-mac.zip)**.
+   Your Mac unzips it automatically. If it doesn't, double-click the zip file.
+2. Double-click **pagewatch**. The first time, macOS will say it can't verify the developer:
+   - Click **Done** (or **OK**).
+   - Open **System Settings > Privacy & Security**, scroll down and click **Open Anyway**
+     next to the message about pagewatch, then confirm.
+   - Double-click **pagewatch** again.
+3. Answer the questions in the Terminal window that opens.
+
+To change settings later, press **Cmd+Space** and type **pagewatch**.
+macOS may show a "Background Items Added" notice; that's the hourly check.
+
+---
+
+## What the setup asks
+
+1. **The web page** to watch. Copy its address from your browser's address bar and paste it.
+2. **The words** to look for, separated by commas, for example `tickets available, sold out`.
+   Upper and lower case don't matter.
+3. **How to alert you:**
+
+| Option | What you need | Cost |
+|---|---|---|
+| **Phone notification** (easiest) | The free **ntfy** app ([iPhone](https://apps.apple.com/app/ntfy/id1625396347), [Android](https://play.google.com/store/apps/details?id=io.heckel.ntfy)). No account. | Free |
+| **Text message (SMS)** | A [Twilio](https://www.twilio.com/try-twilio) account and a Twilio phone number | A few cents per message |
+| **Email** | A Gmail account with an [App Password](https://myaccount.google.com/apppasswords) | Free |
+
+pagewatch sends a test alert at the end so you know it works.
+
+### Notes on SMS (Twilio)
+- Sign up at twilio.com, then copy the **Account SID** and **Auth Token** from the Console home page.
+- Get a phone number in the Console (**Phone Numbers > Buy a number**).
+- On a free trial, Twilio only sends to phone numbers you've verified in the Console.
+- **United States:** carriers require the sending number to be registered first
+  (Twilio walks you through "Toll-free verification"). This can take a few days.
+
+---
+
+## Good to know
+
+- **Your computer has to be on** (it can be locked or asleep). If it was off or asleep,
+  pagewatch checks again soon after it wakes up.
+- **Pages built with JavaScript:** pagewatch reads a page's text without running its scripts.
+  If a word you can see in your browser is never found, the page probably loads that text
+  with JavaScript, and pagewatch can't see it.
+- **Pages that need a login** aren't supported.
+- **Hebrew, Arabic and similar languages:** words are matched as whole words, so `מבצע`
+  won't match `והמבצע`. To match the word anywhere, set `whole_words: false` in the settings file.
+
+## The menu
+
+When you open pagewatch after setting it up, you can:
+
+- **Check now**
+- **Send a test alert**
+- **Change settings**: pages, words or how you're alerted
+- **Show recent activity**: what each check found
+- **Stop watching and remove pagewatch**
+
+## Settings file (advanced)
+
+All settings are in a text file you can edit:
+
+- Windows: `%AppData%\pagewatch\config.yaml`
+- Mac: `~/Library/Application Support/pagewatch/config.yaml`
+
+There you can watch several pages, turn on more than one alert method, change how often
+checks run (`check_every_minutes`), or use a different email server. After changing
+`check_every_minutes`, open pagewatch once so the schedule is updated.
+
+The settings file contains your alert passwords and tokens. It is stored only on your computer.
+
+## Removing pagewatch
+
+Open pagewatch and choose **Stop watching and remove pagewatch**. Then delete the file you downloaded.
+
+## Problems?
+
+- **No alert arrives:** open pagewatch, choose **Send a test alert** and read any error message.
+- **Check what happened:** choose **Show recent activity**.
+- **"Windows protected your PC" or "can't be opened" on Mac:** see the steps under *Get started*.
+- Still stuck? [Open an issue](https://github.com/alonazar/pagewatch/issues).
+
+---
+
+## For developers
+
+pagewatch is a single Go program with one dependency (`gopkg.in/yaml.v3`).
+
+```sh
+go test ./...
+go run . check        # run one check with your saved settings
+go run .              # menu / setup
+```
+
+- Windows release builds use `-ldflags -H=windowsgui`, so the hourly check runs without
+  flashing a window. When opened by the user, the program creates its own console window.
+- The schedule uses Windows Task Scheduler (task "pagewatch") or a launchd agent on Mac
+  (`~/Library/LaunchAgents/io.github.pagewatch.plist`).
+- On first run, pagewatch copies itself into the settings folder, so the schedule keeps
+  working if the downloaded file is moved or deleted.
+
+**Releasing:** push a tag such as `v1.0.0`. GitHub Actions tests the code, builds
+`pagewatch-windows.exe` and a universal `pagewatch-mac.zip`, and publishes them as a release.
+
+## License
+
+MIT

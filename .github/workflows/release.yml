@@ -1,0 +1,58 @@
+name: build
+
+# Every push and pull request is tested. Pushing a tag like v1.0.0 also
+# builds the Windows and Mac downloads and publishes them as a GitHub Release.
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go vet ./...
+      - run: go test ./...
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: test
+    # A Mac runner, so we can combine the Intel and Apple Silicon builds into one file.
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Build
+        env:
+          CGO_ENABLED: "0"
+          VERSION: ${{ github.ref_name }}
+        run: |
+          mkdir -p dist mac
+          LDFLAGS="-s -w -X main.version=$VERSION"
+          GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "$LDFLAGS -H=windowsgui" -o dist/pagewatch-windows.exe .
+          GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags "$LDFLAGS" -o mac/pagewatch-arm64 .
+          GOOS=darwin GOARCH=amd64 go build -trimpath -ldflags "$LDFLAGS" -o mac/pagewatch-amd64 .
+          lipo -create -output mac/pagewatch mac/pagewatch-arm64 mac/pagewatch-amd64
+          codesign --force --sign - mac/pagewatch
+          chmod +x mac/pagewatch
+          (cd mac && zip ../dist/pagewatch-mac.zip pagewatch)
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ github.ref_name }}" dist/* \
+            --title "pagewatch ${{ github.ref_name }}" \
+            --notes "Download **pagewatch-windows.exe** (Windows) or **pagewatch-mac.zip** (Mac), then follow the steps in the [README](https://github.com/${{ github.repository }}#readme)."
