@@ -180,15 +180,7 @@ func installShortcut(exe string) error {
 	if err := os.MkdirAll(filepath.Dir(shortcutPath()), 0o755); err != nil {
 		return err
 	}
-	ps := `$s = (New-Object -ComObject WScript.Shell).CreateShortcut($env:PW_LNK); ` +
-		`$s.TargetPath = $env:PW_EXE; $s.Description = 'Open pagewatch'; $s.Save()`
-	cmd := hideWindowCmd("powershell", "-NoProfile", "-NonInteractive", "-Command", ps)
-	cmd.Env = append(os.Environ(), "PW_LNK="+shortcutPath(), "PW_EXE="+exe)
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("%v: %s", err, strings.TrimSpace(string(out)))
-	}
-	return nil
+	return writeShortcut(shortcutPath(), exe, "Open pagewatch")
 }
 
 func removeShortcut() { _ = os.Remove(shortcutPath()) }

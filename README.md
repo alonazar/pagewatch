@@ -136,6 +136,14 @@ Open pagewatch and choose **Stop watching and remove pagewatch**. Then delete th
 - **No alert arrives:** open pagewatch, choose **Send a test alert** and read any error message.
 - **Check what happened:** choose **Show recent activity**.
 - **"Windows protected your PC" or "can't be opened" on Mac:** see the steps under *Get started*.
+- **Antivirus says pagewatch is a threat:** pagewatch isn't code-signed, and it does things that
+  some antivirus programs treat as suspicious in unknown programs: it copies itself to your
+  settings folder and creates a scheduled task to run the checks. Its full source code is in
+  this repository. Please don't turn off your antivirus. Instead:
+  - Report it to your antivirus maker as a false positive. For Windows Security (Microsoft
+    Defender), use https://www.microsoft.com/wdsi/filesubmission and choose "Incorrectly detected".
+  - [Open an issue](https://github.com/alonazar/pagewatch/issues) with the threat name shown,
+    so we can look into it.
 - Still stuck? [Open an issue](https://github.com/alonazar/pagewatch/issues).
 
 ---
