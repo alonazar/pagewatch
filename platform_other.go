@@ -16,6 +16,8 @@ func attachParentConsole()                          {}
 func installSchedule(exe string, minutes int) error { return errUnsupported }
 func removeSchedule() error                         { return nil }
 func scheduleInstalled() bool                       { return false }
+func scheduledInterval() int                        { return 0 }
+func shortcutPath() string                          { return "" }
 func installShortcut(exe string) error              { return nil }
 func removeShortcut()                               {}
 

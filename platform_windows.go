@@ -17,7 +17,7 @@ const exeSuffix = ".exe"
 const taskName = "pagewatch"
 
 // The Windows build is a "GUI" program (built with -H=windowsgui) so the
-// hourly check runs without flashing a window. When the user opens it,
+// scheduled check runs without flashing a window. When the user opens it,
 // we create a console window for the questions and menu.
 
 var (
@@ -142,6 +142,33 @@ func removeSchedule() error {
 
 func scheduleInstalled() bool {
 	return hideWindowCmd("schtasks", "/Query", "/TN", taskName).Run() == nil
+}
+
+// scheduledInterval reads back how often the scheduled task repeats, in
+// minutes (0 if unknown). Used by tests.
+func scheduledInterval() int {
+	out, err := hideWindowCmd("schtasks", "/Query", "/TN", taskName, "/XML").Output()
+	if err != nil {
+		return 0
+	}
+	// The XML comes back in UTF-16 on some systems; drop the zero bytes.
+	s := strings.ReplaceAll(string(out), "\x00", "")
+	i := strings.Index(s, "<Interval>PT")
+	if i < 0 {
+		return 0
+	}
+	s = s[i+len("<Interval>PT"):]
+	n := 0
+	for _, c := range s {
+		if c < '0' || c > '9' {
+			if c == 'H' {
+				n *= 60
+			}
+			break
+		}
+		n = n*10 + int(c-'0')
+	}
+	return n
 }
 
 func shortcutPath() string {

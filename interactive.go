@@ -196,6 +196,7 @@ func menu(p *prompter, cfg *Config) {
 		switch p.choose("What would you like to do?", []string{
 			"Check now",
 			"Send a test alert",
+			"Change how often to check (now: every " + minutesText(cfg.interval()) + ")",
 			"Add an alert method (phone notification, SMS, WhatsApp or email)",
 			"Remove an alert method",
 			"Change settings (pages, words, alerts)",
@@ -209,17 +210,19 @@ func menu(p *prompter, cfg *Config) {
 		case 2:
 			testAlert(cfg.Alerts)
 		case 3:
-			addAlertMethod(p, cfg)
+			changeInterval(p, cfg)
 		case 4:
-			removeAlertMethod(p, cfg)
+			addAlertMethod(p, cfg)
 		case 5:
+			removeAlertMethod(p, cfg)
+		case 6:
 			setupAndInstall(p, cfg)
 			if c, err := loadConfig(); err == nil {
 				cfg = c
 			}
-		case 6:
-			showLog()
 		case 7:
+			showLog()
+		case 8:
 			if !p.yesNo("Stop all checks and remove pagewatch from this computer?", false) {
 				continue
 			}
@@ -230,7 +233,7 @@ func menu(p *prompter, cfg *Config) {
 				fmt.Println("Done. pagewatch will not run any more checks. You can delete the downloaded file too.")
 			}
 			return
-		case 8:
+		case 9:
 			os.Exit(0) // skips the "press Enter" pause
 		}
 	}
@@ -295,6 +298,10 @@ func runSetup(p *prompter, existing *Config) (*Config, *State) {
 		}
 	}
 
+	// How often
+	heading("How often")
+	cfg.CheckEveryMinutes = askInterval(p, cfg.interval())
+
 	// Alerts
 	if existing != nil {
 		heading("Alerts")
@@ -318,6 +325,64 @@ func runSetup(p *prompter, existing *Config) (*Config, *State) {
 		}
 	}
 	return cfg, st
+}
+
+// intervalChoices are the check frequencies offered in setup and the menu.
+// Other values (5 to 1440 minutes) can still be set in the settings file.
+var intervalChoices = []int{10, 30, 60}
+
+// askInterval asks how often to check; current is marked and kept if it
+// isn't one of the standard choices.
+func askInterval(p *prompter, current int) int {
+	options := make([]string, 0, len(intervalChoices)+1)
+	for _, m := range intervalChoices {
+		label := "Every " + minutesText(m)
+		if m == current {
+			label += "  (current)"
+		}
+		options = append(options, label)
+	}
+	custom := true
+	for _, m := range intervalChoices {
+		if m == current {
+			custom = false
+		}
+	}
+	if custom {
+		options = append(options, "Keep every "+minutesText(current)+"  (current)")
+	}
+	n := p.choose("How often should I check the pages?", options)
+	if n > len(intervalChoices) {
+		return current
+	}
+	return intervalChoices[n-1]
+}
+
+// installFn sets up the schedule; tests replace it.
+var installFn = install
+
+// changeInterval is the menu's "Change how often to check".
+func changeInterval(p *prompter, cfg *Config) {
+	old := cfg.interval()
+	fmt.Println()
+	m := askInterval(p, old)
+	if m == old {
+		fmt.Println("Nothing was changed.")
+		return
+	}
+	cfg.CheckEveryMinutes = m
+	if err := saveConfig(cfg); err != nil {
+		cfg.CheckEveryMinutes = old
+		fmt.Println("Could not save your settings:", err)
+		return
+	}
+	if err := installFn(cfg); err != nil {
+		fmt.Println("Saved, but the schedule could not be updated:", err)
+		fmt.Println("Open pagewatch again to retry.")
+		return
+	}
+	logLine("Now checking every " + minutesText(m))
+	fmt.Println("Done. pagewatch now checks every " + minutesText(m) + ".")
 }
 
 // askWorkingAlert asks for one alert method and sends it a test alert,

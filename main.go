@@ -18,7 +18,7 @@ func main() {
 
 	switch cmd {
 	case "check":
-		// Run by the scheduler every hour; no window, no questions.
+		// Run by the scheduler at the chosen interval; no window, no questions.
 		attachParentConsole()
 		os.Exit(cmdCheck())
 	case "", "menu":

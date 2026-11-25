@@ -73,6 +73,29 @@ func scheduleInstalled() bool {
 	return err == nil
 }
 
+// scheduledInterval reads back how often the schedule runs, in minutes
+// (0 if unknown). Used by tests.
+func scheduledInterval() int {
+	data, err := os.ReadFile(plistPath())
+	if err != nil {
+		return 0
+	}
+	s := string(data)
+	i := strings.Index(s, "<key>StartInterval</key><integer>")
+	if i < 0 {
+		return 0
+	}
+	s = s[i+len("<key>StartInterval</key><integer>"):]
+	n := 0
+	for _, c := range s {
+		if c < '0' || c > '9' {
+			break
+		}
+		n = n*10 + int(c-'0')
+	}
+	return n / 60
+}
+
 func shortcutPath() string {
 	home, _ := os.UserHomeDir()
 	return filepath.Join(home, "Applications", "pagewatch.command")

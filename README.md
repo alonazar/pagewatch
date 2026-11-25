@@ -2,9 +2,9 @@
 
 Get an alert on your phone when certain words appear on a web page.
 
-pagewatch checks the page every hour. When one of your words shows up, it alerts you
-by **phone notification**, **text message (SMS)**, **WhatsApp** or **email**. Each word triggers one
-alert when it first appears, not one every hour.
+pagewatch checks the page every 10 minutes, 30 minutes or hour (your choice). When one of your
+words shows up, it alerts you by **phone notification**, **text message (SMS)**, **WhatsApp** or
+**email**. Each word triggers one alert when it first appears, not one at every check.
 
 It works on **Windows** and **Mac**. There is nothing else to install.
 
@@ -34,7 +34,7 @@ To change settings later, open the **Start menu** and type **pagewatch**.
 3. Answer the questions in the Terminal window that opens.
 
 To change settings later, press **Cmd+Space** and type **pagewatch**.
-macOS may show a "Background Items Added" notice; that's the hourly check.
+macOS may show a "Background Items Added" notice; that's the regular check.
 
 ---
 
@@ -43,7 +43,8 @@ macOS may show a "Background Items Added" notice; that's the hourly check.
 1. **The web page** to watch. Copy its address from your browser's address bar and paste it.
 2. **The words** to look for, separated by commas, for example `tickets available, sold out`.
    Upper and lower case don't matter.
-3. **How to alert you:**
+3. **How often to check:** every 10 minutes, every 30 minutes or every hour. You can change it later.
+4. **How to alert you:**
 
 | Option | What you need | Cost |
 |---|---|---|
@@ -105,6 +106,7 @@ When you open pagewatch after setting it up, you can:
 
 - **Check now**
 - **Send a test alert**
+- **Change how often to check**: every 10 minutes, 30 minutes or hour. Takes effect right away.
 - **Add an alert method**: get alerts in more than one way, for example SMS *and* email.
   Each new method gets its own test alert before it's saved.
 - **Remove an alert method** (you always keep at least one)
@@ -120,8 +122,8 @@ All settings are in a text file you can edit:
 - Mac: `~/Library/Application Support/pagewatch/config.yaml`
 
 There you can watch several pages, turn on more than one alert method, change how often
-checks run (`check_every_minutes`), or use a different email server. After changing
-`check_every_minutes`, open pagewatch once so the schedule is updated.
+checks run (`check_every_minutes`, any value from 5 to 1440 minutes), or use a different email
+server. After changing `check_every_minutes` in the file, open pagewatch once so the schedule is updated.
 
 The settings file contains your alert passwords and tokens. It is stored only on your computer.
 
@@ -148,7 +150,7 @@ go run . check        # run one check with your saved settings
 go run .              # menu / setup
 ```
 
-- Windows release builds use `-ldflags -H=windowsgui`, so the hourly check runs without
+- Windows release builds use `-ldflags -H=windowsgui`, so the scheduled check runs without
   flashing a window. When opened by the user, the program creates its own console window.
 - The schedule uses Windows Task Scheduler (task "pagewatch") or a launchd agent on Mac
   (`~/Library/LaunchAgents/io.github.pagewatch.plist`).

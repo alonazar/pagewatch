@@ -174,6 +174,7 @@ func TestSetupWithTwoAlertMethods(t *testing.T) {
 
 	p := scripted(
 		page.URL, "tickets", "n", // page, words, no other page
+		"2",          // check every 30 minutes
 		"1", "", "y", // ntfy, subscribed, test arrived
 		"y",                                                 // add another
 		"4", "me@gmail.com", "abcd efgh ijkl mnop", "", "y", // email, test arrived
@@ -185,6 +186,9 @@ func TestSetupWithTwoAlertMethods(t *testing.T) {
 	}
 	if err := cfg.validate(); err != nil {
 		t.Fatalf("resulting settings are invalid: %v", err)
+	}
+	if cfg.CheckEveryMinutes != 30 {
+		t.Errorf("expected checks every 30 minutes, got %d", cfg.CheckEveryMinutes)
 	}
 }
 
