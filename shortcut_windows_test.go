@@ -5,6 +5,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
 )
 
@@ -41,9 +42,34 @@ func TestShortcutReadByWindows(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := strings.TrimSpace(strings.TrimPrefix(string(data), string(rune(0xFEFF))))
-	want := target + "|" + targetDir + "|Open pagewatch"
-	if got != want {
-		t.Fatalf("Windows reads the shortcut as\n  %q\nwant\n  %q", got, want)
+	parts := strings.Split(strings.TrimSpace(strings.TrimPrefix(string(data), string(rune(0xFEFF)))), "|")
+	if len(parts) != 3 {
+		t.Fatalf("unexpected answer from Windows: %q", data)
 	}
+	// Windows may give back a folder in its long form ("runneradmin") where we
+	// used the short 8.3 form ("RUNNER~1"); compare the long forms.
+	if a, b := longPath(t, parts[0]), longPath(t, target); !strings.EqualFold(a, b) {
+		t.Errorf("target: Windows reads %q, want %q", a, b)
+	}
+	if a, b := longPath(t, parts[1]), longPath(t, targetDir); !strings.EqualFold(a, b) {
+		t.Errorf("working folder: Windows reads %q, want %q", a, b)
+	}
+	if parts[2] != "Open pagewatch" {
+		t.Errorf("description: Windows reads %q", parts[2])
+	}
+}
+
+// longPath turns any short 8.3 folder names in an existing path into their full names.
+func longPath(t *testing.T, p string) string {
+	t.Helper()
+	in, err := syscall.UTF16PtrFromString(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	buf := make([]uint16, 1024)
+	n, err := syscall.GetLongPathName(in, &buf[0], uint32(len(buf)))
+	if err != nil || int(n) > len(buf) {
+		t.Fatalf("GetLongPathName(%q): %v", p, err)
+	}
+	return syscall.UTF16ToString(buf[:n])
 }
