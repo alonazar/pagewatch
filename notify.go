@@ -16,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 // sendAlert sends the alert to every method that is set up. It returns how
@@ -90,6 +91,9 @@ var twilioAPI = "https://api.twilio.com"
 func sendSMS(c *TwilioConfig, message string) error {
 	if len(message) > 1000 {
 		message = message[:1000]
+		for !utf8.ValidString(message) { // don't cut a letter in half
+			message = message[:len(message)-1]
+		}
 	}
 	form := url.Values{"To": {c.ToNumber}, "From": {c.FromNumber}, "Body": {message}}
 	endpoint := fmt.Sprintf("%s/2010-04-01/Accounts/%s/Messages.json", twilioAPI, url.PathEscape(c.AccountSID))
@@ -114,11 +118,29 @@ func sendSMS(c *TwilioConfig, message string) error {
 			if resp.StatusCode == 401 {
 				return errors.New("Twilio did not accept the Account SID / Auth Token")
 			}
+			if hint := twilioTrialHint(e.Code); hint != "" {
+				return fmt.Errorf("%s (Twilio code %d)", hint, e.Code)
+			}
 			return fmt.Errorf("Twilio said: %s (code %d)", e.Message, e.Code)
 		}
 		return fmt.Errorf("Twilio answered %d", resp.StatusCode)
 	}
 	return nil
+}
+
+// twilioTrialHint explains the errors that free trial Twilio accounts get,
+// which every new Twilio user is likely to run into.
+func twilioTrialHint(code int) string {
+	switch code {
+	case 572006: // trial accounts may only send Twilio's preset template texts
+		return "your Twilio account is a free trial, and trial accounts can't send pagewatch's alerts " +
+			"(Twilio only lets them send its own preset messages). To get SMS alerts, upgrade your Twilio " +
+			"account in the Twilio Console (texts then cost a few cents each), or choose the free phone notification (ntfy) instead"
+	case 572002, 21608: // trial accounts may only text verified numbers
+		return "your Twilio account is a free trial, and it can only text phone numbers you have verified " +
+			"in the Twilio Console (Phone Numbers > Manage > Verified Caller IDs)"
+	}
+	return ""
 }
 
 func sendEmail(c *EmailConfig, subject, body string) error {

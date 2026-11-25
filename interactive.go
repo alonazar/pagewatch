@@ -351,7 +351,7 @@ func askAlerts(p *prompter) Alerts {
 	heading("How should I alert you?")
 	switch p.choose("Pick one:", []string{
 		"Phone notification with the free ntfy app (easiest, no account needed)",
-		"Text message (SMS) through Twilio (needs a Twilio account, costs a few cents per message)",
+		"Text message (SMS) through Twilio (needs an upgraded, paid Twilio account; a few cents per message)",
 		"Email through Gmail",
 	}) {
 	case 1:
@@ -389,12 +389,16 @@ func phoneNumber(s string) (string, error) {
 
 func askTwilio(p *prompter) *TwilioConfig {
 	fmt.Print(`
-You need a Twilio account (https://www.twilio.com/try-twilio):
+You need an upgraded (paid) Twilio account (https://www.twilio.com/try-twilio):
+  - A free trial account will NOT work: Twilio trials can only send Twilio's own
+    preset messages, not pagewatch's alerts. Click "Upgrade" in the Twilio Console
+    and add a payment method first. Texts then cost a few cents each.
   - In the Twilio Console home page, find your "Account SID" and "Auth Token".
-  - Buy or claim a phone number in the Console (Phone Numbers > Buy a number).
-  - On a free trial, Twilio only texts numbers you have verified in the Console.
+  - Buy a phone number in the Console (Phone Numbers > Buy a number).
   - US numbers must be registered before they can send texts (Twilio guides you
     through "Toll-free verification" or "A2P 10DLC"); this can take a few days.
+
+If you don't want to pay for Twilio, pick the free phone notification (ntfy) instead.
 `)
 	c := &TwilioConfig{}
 	c.AccountSID = p.askValid("Account SID (starts with AC)", "", func(s string) (string, error) {

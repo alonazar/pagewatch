@@ -48,15 +48,17 @@ macOS may show a "Background Items Added" notice; that's the hourly check.
 | Option | What you need | Cost |
 |---|---|---|
 | **Phone notification** (easiest) | The free **ntfy** app ([iPhone](https://apps.apple.com/app/ntfy/id1625396347), [Android](https://play.google.com/store/apps/details?id=io.heckel.ntfy)). No account. | Free |
-| **Text message (SMS)** | A [Twilio](https://www.twilio.com/try-twilio) account and a Twilio phone number | A few cents per message |
+| **Text message (SMS)** | An upgraded (paid) [Twilio](https://www.twilio.com/try-twilio) account and a Twilio phone number. A free trial won't work. | A few cents per message |
 | **Email** | A Gmail account with an [App Password](https://myaccount.google.com/apppasswords) | Free |
 
 pagewatch sends a test alert at the end so you know it works.
 
 ### Notes on SMS (Twilio)
+- **A free trial Twilio account won't work.** Twilio trials can only send Twilio's own preset
+  messages, not custom alerts like pagewatch's. In the Twilio Console, click **Upgrade** and add a
+  payment method first. If you'd rather not pay, use the free phone notification (ntfy).
 - Sign up at twilio.com, then copy the **Account SID** and **Auth Token** from the Console home page.
 - Get a phone number in the Console (**Phone Numbers > Buy a number**).
-- On a free trial, Twilio only sends to phone numbers you've verified in the Console.
 - **United States:** carriers require the sending number to be registered first
   (Twilio walks you through "Toll-free verification"). This can take a few days.
 
