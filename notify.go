@@ -47,21 +47,70 @@ func sendAlert(a Alerts, title, message, link string) (int, error) {
 	return sent, errors.Join(errs...)
 }
 
-func describeAlerts(a Alerts) string {
-	var parts []string
+// sendAlertFn is what the menu and setup use to send alerts; tests replace it.
+var sendAlertFn = sendAlert
+
+type alertEntry struct {
+	kind string // "ntfy", "sms", "whatsapp" or "email"
+	desc string
+}
+
+// alertEntries lists the alert methods that are set up, in a fixed order.
+func alertEntries(a Alerts) []alertEntry {
+	var out []alertEntry
 	if a.Ntfy != nil {
-		parts = append(parts, "phone notification (ntfy topic "+a.Ntfy.Topic+")")
+		out = append(out, alertEntry{"ntfy", "phone notification (ntfy topic " + a.Ntfy.Topic + ")"})
 	}
 	if a.SMS != nil {
-		parts = append(parts, "SMS to "+a.SMS.ToNumber)
+		out = append(out, alertEntry{"sms", "SMS to " + a.SMS.ToNumber})
 	}
 	if a.WhatsApp != nil {
-		parts = append(parts, "WhatsApp to "+a.WhatsApp.ToNumber)
+		out = append(out, alertEntry{"whatsapp", "WhatsApp to " + a.WhatsApp.ToNumber})
 	}
 	if a.Email != nil {
-		parts = append(parts, "email to "+a.Email.To)
+		out = append(out, alertEntry{"email", "email to " + a.Email.To})
+	}
+	return out
+}
+
+func describeAlerts(a Alerts) string {
+	var parts []string
+	for _, e := range alertEntries(a) {
+		parts = append(parts, e.desc)
+	}
+	if len(parts) == 0 {
+		return "(nothing yet)"
 	}
 	return strings.Join(parts, ", ")
+}
+
+// mergeAlerts adds every method set up in src to dst, replacing the same kind.
+func mergeAlerts(dst *Alerts, src Alerts) {
+	if src.Ntfy != nil {
+		dst.Ntfy = src.Ntfy
+	}
+	if src.SMS != nil {
+		dst.SMS = src.SMS
+	}
+	if src.WhatsApp != nil {
+		dst.WhatsApp = src.WhatsApp
+	}
+	if src.Email != nil {
+		dst.Email = src.Email
+	}
+}
+
+func removeAlert(a *Alerts, kind string) {
+	switch kind {
+	case "ntfy":
+		a.Ntfy = nil
+	case "sms":
+		a.SMS = nil
+	case "whatsapp":
+		a.WhatsApp = nil
+	case "email":
+		a.Email = nil
+	}
 }
 
 func sendNtfy(c *NtfyConfig, title, message, link string) error {

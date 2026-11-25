@@ -52,7 +52,8 @@ macOS may show a "Background Items Added" notice; that's the hourly check.
 | **WhatsApp** | An upgraded (paid) Twilio account, a WhatsApp sender and a message template approved by Meta (see below) | Per message, set by Meta and Twilio |
 | **Email** | A Gmail account with an [App Password](https://myaccount.google.com/apppasswords) | Free |
 
-pagewatch sends a test alert at the end so you know it works.
+pagewatch sends a test alert so you know it works. You can then add another way to get alerts,
+for example a phone notification *and* an email. Every alert goes to all of them.
 
 ### Notes on SMS (Twilio)
 - **A free trial Twilio account won't work.** Twilio trials can only send Twilio's own preset
@@ -104,6 +105,9 @@ When you open pagewatch after setting it up, you can:
 
 - **Check now**
 - **Send a test alert**
+- **Add an alert method**: get alerts in more than one way, for example SMS *and* email.
+  Each new method gets its own test alert before it's saved.
+- **Remove an alert method** (you always keep at least one)
 - **Change settings**: pages, words or how you're alerted
 - **Show recent activity**: what each check found
 - **Stop watching and remove pagewatch**

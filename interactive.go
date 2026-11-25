@@ -196,6 +196,8 @@ func menu(p *prompter, cfg *Config) {
 		switch p.choose("What would you like to do?", []string{
 			"Check now",
 			"Send a test alert",
+			"Add an alert method (phone notification, SMS, WhatsApp or email)",
+			"Remove an alert method",
 			"Change settings (pages, words, alerts)",
 			"Show recent activity",
 			"Stop watching and remove pagewatch",
@@ -207,13 +209,17 @@ func menu(p *prompter, cfg *Config) {
 		case 2:
 			testAlert(cfg.Alerts)
 		case 3:
+			addAlertMethod(p, cfg)
+		case 4:
+			removeAlertMethod(p, cfg)
+		case 5:
 			setupAndInstall(p, cfg)
 			if c, err := loadConfig(); err == nil {
 				cfg = c
 			}
-		case 4:
+		case 6:
 			showLog()
-		case 5:
+		case 7:
 			if !p.yesNo("Stop all checks and remove pagewatch from this computer?", false) {
 				continue
 			}
@@ -224,7 +230,7 @@ func menu(p *prompter, cfg *Config) {
 				fmt.Println("Done. pagewatch will not run any more checks. You can delete the downloaded file too.")
 			}
 			return
-		case 6:
+		case 8:
 			os.Exit(0) // skips the "press Enter" pause
 		}
 	}
@@ -232,7 +238,7 @@ func menu(p *prompter, cfg *Config) {
 
 func testAlert(a Alerts) bool {
 	fmt.Println("\nSending a test alert...")
-	n, err := sendAlert(a, "pagewatch test", "This is a test from pagewatch. Alerts will look like this.", "")
+	n, err := sendAlertFn(a, "pagewatch test", "This is a test from pagewatch. Alerts will look like this.", "")
 	if err != nil {
 		fmt.Println("  Problem:", err)
 	}
@@ -302,14 +308,75 @@ func runSetup(p *prompter, existing *Config) (*Config, *State) {
 	if existing != nil {
 		prev = existing.Alerts
 	}
+	cfg.Alerts = Alerts{}
 	for {
-		cfg.Alerts = askAlerts(p, prev)
-		if testAlert(cfg.Alerts) && p.yesNo("Did the test alert arrive?", true) {
+		added, _ := askWorkingAlert(p, cfg.Alerts, prev, false)
+		mergeAlerts(&cfg.Alerts, added)
+		fmt.Println("\nAlerts will go to: " + describeAlerts(cfg.Alerts))
+		if !p.yesNo("Add another way to get alerts (for example SMS and email)?", false) {
 			break
+		}
+	}
+	return cfg, st
+}
+
+// askWorkingAlert asks for one alert method and sends it a test alert,
+// asking again until the test arrives. With allowCancel, the person can
+// give up after a failed test; ok is then false.
+func askWorkingAlert(p *prompter, current, prev Alerts, allowCancel bool) (a Alerts, ok bool) {
+	for {
+		a = askAlerts(p, current, prev)
+		if testAlert(a) && p.yesNo("Did the test alert arrive?", true) {
+			return a, true
+		}
+		if allowCancel && !p.yesNo("\nTry again?", true) {
+			return Alerts{}, false
 		}
 		fmt.Println("\nLet's try again. Check the details carefully (the tips above may help).")
 	}
-	return cfg, st
+}
+
+// addAlertMethod is the menu's "Add an alert method".
+func addAlertMethod(p *prompter, cfg *Config) {
+	added, ok := askWorkingAlert(p, cfg.Alerts, cfg.Alerts, true)
+	if !ok {
+		fmt.Println("Nothing was changed.")
+		return
+	}
+	mergeAlerts(&cfg.Alerts, added)
+	if err := saveConfig(cfg); err != nil {
+		fmt.Println("Could not save your settings:", err)
+		return
+	}
+	logLine("Alerts now go to: " + describeAlerts(cfg.Alerts))
+	fmt.Println("\nSaved. Alerts now go to: " + describeAlerts(cfg.Alerts))
+}
+
+// removeAlertMethod is the menu's "Remove an alert method".
+func removeAlertMethod(p *prompter, cfg *Config) {
+	entries := alertEntries(cfg.Alerts)
+	if len(entries) < 2 {
+		fmt.Println("\nThat is your only alert method, so it can't be removed.")
+		fmt.Println("Add another one first, or choose \"Stop watching and remove pagewatch\".")
+		return
+	}
+	options := make([]string, 0, len(entries)+1)
+	for _, e := range entries {
+		options = append(options, e.desc)
+	}
+	options = append(options, "Cancel")
+	n := p.choose("\nWhich one should I remove?", options)
+	if n > len(entries) {
+		fmt.Println("Nothing was changed.")
+		return
+	}
+	removeAlert(&cfg.Alerts, entries[n-1].kind)
+	if err := saveConfig(cfg); err != nil {
+		fmt.Println("Could not save your settings:", err)
+		return
+	}
+	logLine("Alerts now go to: " + describeAlerts(cfg.Alerts))
+	fmt.Println("Removed. Alerts now go to: " + describeAlerts(cfg.Alerts))
 }
 
 func askPage(p *prompter, cfg *Config) (Page, []string) {
@@ -364,13 +431,21 @@ func askPage(p *prompter, cfg *Config) (Page, []string) {
 	return page, present
 }
 
-func askAlerts(p *prompter, prev Alerts) Alerts {
+// askAlerts asks for one alert method. current is what is already set up
+// (shown as "will replace"); prev offers Twilio login details to reuse.
+func askAlerts(p *prompter, current, prev Alerts) Alerts {
 	heading("How should I alert you?")
+	mark := func(label string, have bool) string {
+		if have {
+			return label + "  [already set up: this replaces it]"
+		}
+		return label
+	}
 	switch p.choose("Pick one:", []string{
-		"Phone notification with the free ntfy app (easiest, no account needed)",
-		"Text message (SMS) through Twilio (needs an upgraded, paid Twilio account; a few cents per message)",
-		"WhatsApp message through Twilio (needs a paid Twilio account and a one-time WhatsApp setup)",
-		"Email through Gmail",
+		mark("Phone notification with the free ntfy app (easiest, no account needed)", current.Ntfy != nil),
+		mark("Text message (SMS) through Twilio (needs an upgraded, paid Twilio account; a few cents per message)", current.SMS != nil),
+		mark("WhatsApp message through Twilio (needs a paid Twilio account and a one-time WhatsApp setup)", current.WhatsApp != nil),
+		mark("Email through Gmail", current.Email != nil),
 	}) {
 	case 1:
 		return Alerts{Ntfy: askNtfy(p)}
