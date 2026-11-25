@@ -106,6 +106,8 @@ When you open pagewatch after setting it up, you can:
 
 - **Check now**
 - **Send a test alert**
+- **Show current settings**: pages, words, how often, whether the schedule is running, the last
+  check, and where alerts go. Passwords and auth tokens are never shown, only whether they're set.
 - **Change how often to check**: every 10 minutes, 30 minutes or hour. Takes effect right away.
 - **Add an alert method**: get alerts in more than one way, for example SMS *and* email.
   Each new method gets its own test alert before it's saved.

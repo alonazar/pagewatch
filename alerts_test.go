@@ -45,7 +45,7 @@ func baseConfig(a Alerts) *Config {
 var (
 	ntfyA = &NtfyConfig{Topic: "pagewatch-aaaa"}
 	email = &EmailConfig{SMTPServer: "smtp.gmail.com", SMTPPort: 587, Username: "me@gmail.com", Password: "pw", To: "dad@example.com"}
-	sms   = &TwilioConfig{"AC1", "t", "+12369000098", "+61412345678"}
+	sms   = &TwilioConfig{"AC1", "t", "+15005550006", "+61412345678"}
 )
 
 func TestAddAlertMethodKeepsExistingOnes(t *testing.T) {

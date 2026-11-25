@@ -34,12 +34,12 @@ func TestWhatsAppTemplateMessage(t *testing.T) {
 	var got url.Values
 	defer fakeTwilio(t, &code, &got)()
 
-	c := &WhatsAppConfig{"AC1", "t", "+12369000098", "+61412345678", "HX0123456789abcdef0123456789abcdef"}
+	c := &WhatsAppConfig{"AC1", "t", "+15005550006", "+61412345678", "HX0123456789abcdef0123456789abcdef"}
 	msg := "Found \"tickets\",\n\t\"מבצע\"    on https://example.com" + strings.Repeat("x", 2000)
 	if err := sendWhatsApp(c, msg); err != nil {
 		t.Fatal(err)
 	}
-	if got.Get("From") != "whatsapp:+12369000098" || got.Get("To") != "whatsapp:+61412345678" {
+	if got.Get("From") != "whatsapp:+15005550006" || got.Get("To") != "whatsapp:+61412345678" {
 		t.Errorf("numbers not sent as WhatsApp addresses: From=%q To=%q", got.Get("From"), got.Get("To"))
 	}
 	if got.Get("ContentSid") != c.TemplateSID || got.Get("Body") != "" {
@@ -77,7 +77,7 @@ func TestWhatsAppErrorsExplained(t *testing.T) {
 	var got url.Values
 	defer fakeTwilio(t, &code, &got)()
 
-	c := &WhatsAppConfig{"AC1", "t", "+12369000098", "+61412345678", ""}
+	c := &WhatsAppConfig{"AC1", "t", "+15005550006", "+61412345678", ""}
 	for c2, want := range map[int]string{
 		63016: "approved message template",
 		63007: "WhatsApp sender",

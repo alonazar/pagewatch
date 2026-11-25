@@ -196,6 +196,7 @@ func menu(p *prompter, cfg *Config) {
 		switch p.choose("What would you like to do?", []string{
 			"Check now",
 			"Send a test alert",
+			"Show current settings",
 			"Change how often to check (now: every " + minutesText(cfg.interval()) + ")",
 			"Add an alert method (phone notification, SMS, WhatsApp or email)",
 			"Remove an alert method",
@@ -210,19 +211,22 @@ func menu(p *prompter, cfg *Config) {
 		case 2:
 			testAlert(cfg.Alerts)
 		case 3:
-			changeInterval(p, cfg)
+			fmt.Print(settingsReport(cfg, loadState(), currentSchedule()))
+			p.pressEnter("\nPress Enter to go back to the menu.")
 		case 4:
-			addAlertMethod(p, cfg)
+			changeInterval(p, cfg)
 		case 5:
-			removeAlertMethod(p, cfg)
+			addAlertMethod(p, cfg)
 		case 6:
+			removeAlertMethod(p, cfg)
+		case 7:
 			setupAndInstall(p, cfg)
 			if c, err := loadConfig(); err == nil {
 				cfg = c
 			}
-		case 7:
-			showLog()
 		case 8:
+			showLog()
+		case 9:
 			if !p.yesNo("Stop all checks and remove pagewatch from this computer?", false) {
 				continue
 			}
@@ -233,7 +237,7 @@ func menu(p *prompter, cfg *Config) {
 				fmt.Println("Done. pagewatch will not run any more checks. You can delete the downloaded file too.")
 			}
 			return
-		case 9:
+		case 10:
 			os.Exit(0) // skips the "press Enter" pause
 		}
 	}
