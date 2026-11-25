@@ -24,6 +24,19 @@ func (p *prompter) line() string {
 		fmt.Println("\nNo more input; closing.")
 		os.Exit(0)
 	}
+	return cleanAnswer(s)
+}
+
+// cleanAnswer trims spaces and removes invisible characters (byte-order
+// marks, zero-width spaces) that copying from web pages can bring along.
+func cleanAnswer(s string) string {
+	s = strings.Map(func(r rune) rune {
+		switch r {
+		case 0xFEFF, 0x200B, 0x200C, 0x200D, 0x2060: // BOM, zero-width space/non-joiner/joiner, word joiner
+			return -1
+		}
+		return r
+	}, s)
 	return strings.TrimSpace(s)
 }
 
@@ -285,8 +298,12 @@ func runSetup(p *prompter, existing *Config) (*Config, *State) {
 			return cfg, st
 		}
 	}
+	var prev Alerts
+	if existing != nil {
+		prev = existing.Alerts
+	}
 	for {
-		cfg.Alerts = askAlerts(p)
+		cfg.Alerts = askAlerts(p, prev)
 		if testAlert(cfg.Alerts) && p.yesNo("Did the test alert arrive?", true) {
 			break
 		}
@@ -347,20 +364,79 @@ func askPage(p *prompter, cfg *Config) (Page, []string) {
 	return page, present
 }
 
-func askAlerts(p *prompter) Alerts {
+func askAlerts(p *prompter, prev Alerts) Alerts {
 	heading("How should I alert you?")
 	switch p.choose("Pick one:", []string{
 		"Phone notification with the free ntfy app (easiest, no account needed)",
 		"Text message (SMS) through Twilio (needs an upgraded, paid Twilio account; a few cents per message)",
+		"WhatsApp message through Twilio (needs a paid Twilio account and a one-time WhatsApp setup)",
 		"Email through Gmail",
 	}) {
 	case 1:
 		return Alerts{Ntfy: askNtfy(p)}
 	case 2:
 		return Alerts{SMS: askTwilio(p)}
+	case 3:
+		return Alerts{WhatsApp: askWhatsApp(p, prev)}
 	default:
 		return Alerts{Email: askEmail(p)}
 	}
+}
+
+func askWhatsApp(p *prompter, prev Alerts) *WhatsAppConfig {
+	fmt.Print(`
+WhatsApp alerts go through Twilio and need a one-time setup in the Twilio Console:
+  1. An upgraded (paid) Twilio account.
+  2. A WhatsApp sender: under Numbers & senders > WhatsApp, register a phone number
+     you own in Twilio that isn't already used with WhatsApp. Twilio will ask you to
+     connect a Meta (Facebook) Business account.
+  3. A message template approved by Meta: under Messaging > Templates, create a
+     template with category "Utility", choose WhatsApp, and use exactly this text:
+
+       ` + WhatsAppTemplate + `
+
+     Submit it for WhatsApp approval. Once approved, copy its Content SID (starts with HX).
+
+Just trying it out? Leave the Content SID empty and use Twilio's WhatsApp Sandbox
+instead ("Send a WhatsApp message" on the Twilio Console home page). Sandbox alerts only
+arrive within 24 hours of the receiving phone last messaging the sandbox.
+`)
+	c := &WhatsAppConfig{}
+
+	// Reuse Twilio login details from earlier settings, if there are any.
+	var sid, token string
+	switch {
+	case prev.WhatsApp != nil:
+		sid, token = prev.WhatsApp.AccountSID, prev.WhatsApp.AuthToken
+	case prev.SMS != nil:
+		sid, token = prev.SMS.AccountSID, prev.SMS.AuthToken
+	}
+	if sid != "" && p.yesNo("\nUse the same Twilio account as before ("+sid+")?", true) {
+		c.AccountSID, c.AuthToken = sid, token
+	} else {
+		c.AccountSID = p.askValid("Account SID (starts with AC)", "", func(s string) (string, error) {
+			if !strings.HasPrefix(s, "AC") || len(s) < 30 {
+				return "", errors.New("The Account SID starts with AC and is 34 characters long.")
+			}
+			return s, nil
+		})
+		c.AuthToken = p.askValid("Auth Token", "", func(s string) (string, error) {
+			if len(s) < 20 {
+				return "", errors.New("That looks too short; copy the whole Auth Token.")
+			}
+			return s, nil
+		})
+	}
+	c.FromNumber = p.askValid("Your WhatsApp sender number in Twilio (or the Sandbox number)", "", phoneNumber)
+	c.ToNumber = p.askValid("The WhatsApp number that receives alerts", "", phoneNumber)
+	c.TemplateSID = p.askValid("Template Content SID (starts with HX; leave empty for the Sandbox)", "", func(s string) (string, error) {
+		s = strings.TrimSpace(s)
+		if s != "" && (!strings.HasPrefix(s, "HX") || len(s) < 30) {
+			return "", errors.New("The Content SID starts with HX and is 34 characters long.")
+		}
+		return s, nil
+	})
+	return c
 }
 
 func askNtfy(p *prompter) *NtfyConfig {

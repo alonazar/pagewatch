@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/smtp"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -37,6 +38,9 @@ func sendAlert(a Alerts, title, message, link string) (int, error) {
 	if a.SMS != nil {
 		try("SMS (Twilio)", func() error { return sendSMS(a.SMS, message) })
 	}
+	if a.WhatsApp != nil {
+		try("WhatsApp (Twilio)", func() error { return sendWhatsApp(a.WhatsApp, message) })
+	}
 	if a.Email != nil {
 		try("email", func() error { return sendEmail(a.Email, title, message) })
 	}
@@ -50,6 +54,9 @@ func describeAlerts(a Alerts) string {
 	}
 	if a.SMS != nil {
 		parts = append(parts, "SMS to "+a.SMS.ToNumber)
+	}
+	if a.WhatsApp != nil {
+		parts = append(parts, "WhatsApp to "+a.WhatsApp.ToNumber)
 	}
 	if a.Email != nil {
 		parts = append(parts, "email to "+a.Email.To)
@@ -88,20 +95,55 @@ func sendNtfy(c *NtfyConfig, title, message, link string) error {
 // twilioAPI is a variable so tests can point it elsewhere.
 var twilioAPI = "https://api.twilio.com"
 
-func sendSMS(c *TwilioConfig, message string) error {
-	if len(message) > 1000 {
-		message = message[:1000]
-		for !utf8.ValidString(message) { // don't cut a letter in half
-			message = message[:len(message)-1]
-		}
+// truncate shortens s to at most n bytes without cutting a letter in half.
+func truncate(s string, n int) string {
+	if len(s) <= n {
+		return s
 	}
-	form := url.Values{"To": {c.ToNumber}, "From": {c.FromNumber}, "Body": {message}}
-	endpoint := fmt.Sprintf("%s/2010-04-01/Accounts/%s/Messages.json", twilioAPI, url.PathEscape(c.AccountSID))
+	s = s[:n]
+	for !utf8.ValidString(s) {
+		s = s[:len(s)-1]
+	}
+	return s
+}
+
+func sendSMS(c *TwilioConfig, message string) error {
+	form := url.Values{"To": {c.ToNumber}, "From": {c.FromNumber}, "Body": {truncate(message, 1000)}}
+	return twilioSend(c.AccountSID, c.AuthToken, form)
+}
+
+// WhatsAppTemplate is the message template users create in Twilio and get
+// approved by Meta. Its one placeholder receives the alert text. (Meta rejects
+// templates that start or end with a placeholder.)
+const WhatsAppTemplate = "pagewatch alert: {{1}}. Open the page to see more."
+
+var reNoTemplateSpace = regexp.MustCompile(`\s+`)
+
+func sendWhatsApp(c *WhatsAppConfig, message string) error {
+	form := url.Values{"To": {"whatsapp:" + c.ToNumber}, "From": {"whatsapp:" + c.FromNumber}}
+	if c.TemplateSID != "" {
+		// Template values may not contain new lines, tabs or runs of spaces.
+		value := truncate(reNoTemplateSpace.ReplaceAllString(strings.TrimSpace(message), " "), 900)
+		vars, _ := json.Marshal(map[string]string{"1": value})
+		form.Set("ContentSid", c.TemplateSID)
+		form.Set("ContentVariables", string(vars))
+	} else {
+		// No template: only works with Twilio's WhatsApp Sandbox, within 24 hours
+		// of the receiving phone last messaging it.
+		form.Set("Body", truncate(message, 1500))
+	}
+	return twilioSend(c.AccountSID, c.AuthToken, form)
+}
+
+// twilioSend sends a message through Twilio's Messages API (used for both
+// SMS and WhatsApp) and turns Twilio's errors into plain words.
+func twilioSend(accountSID, authToken string, form url.Values) error {
+	endpoint := fmt.Sprintf("%s/2010-04-01/Accounts/%s/Messages.json", twilioAPI, url.PathEscape(accountSID))
 	req, err := http.NewRequest("POST", endpoint, strings.NewReader(form.Encode()))
 	if err != nil {
 		return err
 	}
-	req.SetBasicAuth(c.AccountSID, c.AuthToken)
+	req.SetBasicAuth(accountSID, authToken)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	resp, err := httpClient.Do(req)
 	if err != nil {
@@ -118,7 +160,7 @@ func sendSMS(c *TwilioConfig, message string) error {
 			if resp.StatusCode == 401 {
 				return errors.New("Twilio did not accept the Account SID / Auth Token")
 			}
-			if hint := twilioTrialHint(e.Code); hint != "" {
+			if hint := twilioHint(e.Code); hint != "" {
 				return fmt.Errorf("%s (Twilio code %d)", hint, e.Code)
 			}
 			return fmt.Errorf("Twilio said: %s (code %d)", e.Message, e.Code)
@@ -128,9 +170,9 @@ func sendSMS(c *TwilioConfig, message string) error {
 	return nil
 }
 
-// twilioTrialHint explains the errors that free trial Twilio accounts get,
-// which every new Twilio user is likely to run into.
-func twilioTrialHint(code int) string {
+// twilioHint explains, in plain words, the Twilio errors new users are
+// most likely to run into.
+func twilioHint(code int) string {
 	switch code {
 	case 572006: // trial accounts may only send Twilio's preset template texts
 		return "your Twilio account is a free trial, and trial accounts can't send pagewatch's alerts " +
@@ -139,6 +181,15 @@ func twilioTrialHint(code int) string {
 	case 572002, 21608: // trial accounts may only text verified numbers
 		return "your Twilio account is a free trial, and it can only text phone numbers you have verified " +
 			"in the Twilio Console (Phone Numbers > Manage > Verified Caller IDs)"
+	case 63016: // WhatsApp: free text outside the 24-hour window
+		return "WhatsApp only allows an approved message template here. Add your approved template's " +
+			"Content SID (starts with HX) to pagewatch's WhatsApp settings. (Without a template, WhatsApp only " +
+			"works with Twilio's Sandbox, within 24 hours of the receiving phone messaging it)"
+	case 63007: // WhatsApp: the From number isn't a WhatsApp sender on this account
+		return "Twilio doesn't know this number as a WhatsApp sender. Check that it is registered under " +
+			"Numbers & senders > WhatsApp in the Twilio Console and that its status is Online"
+	case 63003: // WhatsApp: the To number isn't on WhatsApp
+		return "the receiving number doesn't seem to be on WhatsApp. Check the number, including the + and country code"
 	}
 	return ""
 }

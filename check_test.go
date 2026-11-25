@@ -132,6 +132,8 @@ func TestConfigRoundTrip(t *testing.T) {
 		Alerts: Alerts{
 			Ntfy: &NtfyConfig{Topic: "pagewatch-abc"},
 			SMS:  &TwilioConfig{AccountSID: "AC1", AuthToken: "t", FromNumber: "+1555", ToNumber: "+1666"},
+			WhatsApp: &WhatsAppConfig{AccountSID: "AC1", AuthToken: "t", FromNumber: "+1555", ToNumber: "+61412345678",
+				TemplateSID: "HX0123456789abcdef0123456789abcdef"},
 		},
 	}
 	if err := saveConfig(in); err != nil {

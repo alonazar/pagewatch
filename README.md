@@ -3,7 +3,7 @@
 Get an alert on your phone when certain words appear on a web page.
 
 pagewatch checks the page every hour. When one of your words shows up, it alerts you
-by **phone notification**, **text message (SMS)** or **email**. Each word triggers one
+by **phone notification**, **text message (SMS)**, **WhatsApp** or **email**. Each word triggers one
 alert when it first appears, not one every hour.
 
 It works on **Windows** and **Mac**. There is nothing else to install.
@@ -49,6 +49,7 @@ macOS may show a "Background Items Added" notice; that's the hourly check.
 |---|---|---|
 | **Phone notification** (easiest) | The free **ntfy** app ([iPhone](https://apps.apple.com/app/ntfy/id1625396347), [Android](https://play.google.com/store/apps/details?id=io.heckel.ntfy)). No account. | Free |
 | **Text message (SMS)** | An upgraded (paid) [Twilio](https://www.twilio.com/try-twilio) account and a Twilio phone number. A free trial won't work. | A few cents per message |
+| **WhatsApp** | An upgraded (paid) Twilio account, a WhatsApp sender and a message template approved by Meta (see below) | Per message, set by Meta and Twilio |
 | **Email** | A Gmail account with an [App Password](https://myaccount.google.com/apppasswords) | Free |
 
 pagewatch sends a test alert at the end so you know it works.
@@ -61,6 +62,28 @@ pagewatch sends a test alert at the end so you know it works.
 - Get a phone number in the Console (**Phone Numbers > Buy a number**).
 - **United States:** carriers require the sending number to be registered first
   (Twilio walks you through "Toll-free verification"). This can take a few days.
+- **Texting another country:** in the Twilio Console, open **Messaging > Settings > Geo permissions**
+  and tick that country, or Twilio will refuse to send there.
+
+### Notes on WhatsApp (Twilio)
+WhatsApp needs more one-time setup than SMS, all in the Twilio Console:
+
+1. An **upgraded (paid) Twilio account**.
+2. A **WhatsApp sender**: under **Numbers & senders > WhatsApp**, register a Twilio phone number
+   that isn't already used with WhatsApp. Twilio asks you to connect a Meta (Facebook) Business account.
+3. A **message template approved by Meta**: WhatsApp only lets businesses start a conversation
+   with an approved template. Under **Messaging > Templates**, create a template with category
+   **Utility** for WhatsApp, with exactly this text:
+
+   ```
+   pagewatch alert: {{1}}. Open the page to see more.
+   ```
+
+   Submit it for approval. Once approved, copy its **Content SID** (starts with `HX`) into pagewatch's setup.
+
+**Just trying it out?** Use Twilio's WhatsApp Sandbox ("Send a WhatsApp message" on the Console
+home page) and leave the Content SID empty. Sandbox alerts only arrive within 24 hours of the
+receiving phone last messaging the sandbox, so it isn't suitable for real alerts.
 
 ---
 

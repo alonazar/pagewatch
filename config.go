@@ -32,9 +32,20 @@ type Page struct {
 }
 
 type Alerts struct {
-	Ntfy  *NtfyConfig   `yaml:"ntfy,omitempty"`
-	SMS   *TwilioConfig `yaml:"sms,omitempty"`
-	Email *EmailConfig  `yaml:"email,omitempty"`
+	Ntfy     *NtfyConfig     `yaml:"ntfy,omitempty"`
+	SMS      *TwilioConfig   `yaml:"sms,omitempty"`
+	WhatsApp *WhatsAppConfig `yaml:"whatsapp,omitempty"`
+	Email    *EmailConfig    `yaml:"email,omitempty"`
+}
+
+type WhatsAppConfig struct {
+	AccountSID string `yaml:"account_sid"`
+	AuthToken  string `yaml:"auth_token"`
+	FromNumber string `yaml:"from_number"`
+	ToNumber   string `yaml:"to_number"`
+	// TemplateSID is the approved message template's Content SID (HX...).
+	// Empty means free text, which only works with Twilio's WhatsApp Sandbox.
+	TemplateSID string `yaml:"template_sid,omitempty"`
 }
 
 type NtfyConfig struct {
@@ -111,8 +122,8 @@ func (c *Config) validate() error {
 		}
 	}
 	a := c.Alerts
-	if a.Ntfy == nil && a.SMS == nil && a.Email == nil {
-		return errors.New("no alert method is set up (ntfy, sms or email)")
+	if a.Ntfy == nil && a.SMS == nil && a.WhatsApp == nil && a.Email == nil {
+		return errors.New("no alert method is set up (ntfy, sms, whatsapp or email)")
 	}
 	if a.Ntfy != nil && strings.TrimSpace(a.Ntfy.Topic) == "" {
 		return errors.New("ntfy: topic is empty")
@@ -120,6 +131,14 @@ func (c *Config) validate() error {
 	if s := a.SMS; s != nil {
 		if s.AccountSID == "" || s.AuthToken == "" || s.FromNumber == "" || s.ToNumber == "" {
 			return errors.New("sms: account_sid, auth_token, from_number and to_number are all needed")
+		}
+	}
+	if w := a.WhatsApp; w != nil {
+		if w.AccountSID == "" || w.AuthToken == "" || w.FromNumber == "" || w.ToNumber == "" {
+			return errors.New("whatsapp: account_sid, auth_token, from_number and to_number are all needed")
+		}
+		if w.TemplateSID != "" && !strings.HasPrefix(w.TemplateSID, "HX") {
+			return errors.New("whatsapp: template_sid should start with HX (or be left out to use the Sandbox)")
 		}
 	}
 	if e := a.Email; e != nil {
@@ -190,6 +209,15 @@ func saveConfig(c *Config) error {
 		b.WriteString("  # Text message through Twilio. Phone numbers start with + and the country code.\n")
 		fmt.Fprintf(&b, "  sms:\n    account_sid: %s\n    auth_token: %s\n    from_number: %s\n    to_number: %s\n",
 			q(s.AccountSID), q(s.AuthToken), q(s.FromNumber), q(s.ToNumber))
+	}
+	if w := c.Alerts.WhatsApp; w != nil {
+		b.WriteString("  # WhatsApp through Twilio. template_sid is your approved template's Content SID (HX...).\n")
+		b.WriteString("  # The template text should be: " + WhatsAppTemplate + "\n")
+		fmt.Fprintf(&b, "  whatsapp:\n    account_sid: %s\n    auth_token: %s\n    from_number: %s\n    to_number: %s\n",
+			q(w.AccountSID), q(w.AuthToken), q(w.FromNumber), q(w.ToNumber))
+		if w.TemplateSID != "" {
+			fmt.Fprintf(&b, "    template_sid: %s\n", q(w.TemplateSID))
+		}
 	}
 	if e := c.Alerts.Email; e != nil {
 		b.WriteString("  # Email. For Gmail, password is an App Password, not your normal password.\n")
