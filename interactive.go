@@ -448,6 +448,21 @@ func removeAlertMethod(p *prompter, cfg *Config) {
 	fmt.Println("Removed. Alerts now go to: " + describeAlerts(cfg.Alerts))
 }
 
+// describeEmbedded tells the user about pages shown inside the page they
+// chose, which a browser displays as one page.
+func describeEmbedded(pc *pageContent) {
+	if len(pc.Embedded) > 0 {
+		fmt.Println("  Part of this page comes from another address. pagewatch will check it too:")
+		for _, u := range pc.Embedded {
+			fmt.Println("    " + u)
+		}
+	}
+	for _, prob := range pc.Problems {
+		fmt.Printf("  Part of this page comes from %s, but it could not be opened: %v\n", prob.URL, prob.Err)
+		fmt.Println("  Words shown in that part won't be found until it opens.")
+	}
+}
+
 func askPage(p *prompter, cfg *Config) (Page, []string) {
 	var page Page
 	var text string
@@ -463,10 +478,11 @@ func askPage(p *prompter, cfg *Config) (Page, []string) {
 			return s, validateURL(s)
 		})
 		fmt.Println("Opening the page to make sure it works...")
-		t, err := fetchText(page.URL)
+		pc, err := fetchPage(page.URL)
 		if err == nil {
 			fmt.Println("  OK, the page opened.")
-			text = t
+			describeEmbedded(pc)
+			text = pc.Text
 			break
 		}
 		fmt.Println("  Could not open it:", err)

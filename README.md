@@ -96,6 +96,10 @@ receiving phone last messaging the sandbox, so it isn't suitable for real alerts
 - **Pages built with JavaScript:** pagewatch reads a page's text without running its scripts.
   If a word you can see in your browser is never found, the page probably loads that text
   with JavaScript, and pagewatch can't see it.
+- **Pages shown inside other pages:** some websites show part of a page (often a table or
+  listing) from another address, inside a frame. Your browser shows it as one page, and so
+  does pagewatch: it also reads up to 5 pages shown inside the page you watch, and tells you
+  about them when you set it up. Videos, maps, ads and social media posts are skipped.
 - **Pages that need a login** aren't supported.
 - **Hebrew, Arabic and similar languages:** words are matched as whole words, so `מבצע`
   won't match `והמבצע`. To match the word anywhere, set `whole_words: false` in the settings file.
