@@ -142,8 +142,7 @@ Open pagewatch and choose **Stop watching and remove pagewatch**. Then delete th
 - **No alert arrives:** open pagewatch, choose **Send a test alert** and read any error message.
 - **Check what happened:** choose **Show recent activity**.
 - **"Windows protected your PC" or "can't be opened" on Mac:** see the steps under *Get started*.
-- **Antivirus says pagewatch is a threat:** older versions aren't code-signed (see
-  *Code signing policy* below), and pagewatch does things that
+- **Antivirus says pagewatch is a threat:** pagewatch isn't code-signed, and it does things that
   some antivirus programs treat as suspicious in unknown programs: it copies itself to your
   settings folder and creates a scheduled task to run the checks. Its full source code is in
   this repository. Please don't turn off your antivirus. Instead:
@@ -173,35 +172,15 @@ go run .              # menu / setup
   working if the downloaded file is moved or deleted.
 
 **Releasing:** push a tag such as `v1.0.0`. GitHub Actions tests the code, builds
-`pagewatch-windows.exe` and a universal `pagewatch-mac.zip`, sends the Windows file for
-signing (see below), and publishes them as a release.
+`pagewatch-windows.exe` and a universal `pagewatch-mac.zip`, and publishes them as a release.
 
-## Code signing policy
+## Privacy
 
-Free code signing provided by [SignPath.io](https://about.signpath.io), certificate by
-[SignPath Foundation](https://signpath.org).
-
-Signing starts with the first release after SignPath Foundation approves the project.
-Releases up to and including v0.1.7 are not signed.
-
-- Only `pagewatch-windows.exe` is signed. It is built by GitHub Actions from the tagged source
-  in this repository ([release.yml](.github/workflows/release.yml)); nothing is signed from a
-  personal computer.
-- Every signing request is approved by hand.
-
-**Team roles**
-
-| Role | Who |
-| --- | --- |
-| Committers and reviewers | [Alon Azar](https://github.com/alonazar) |
-| Approvers | [Alon Azar](https://github.com/alonazar) |
-
-**Privacy policy:** this program will not transfer any information to other networked
-systems unless specifically requested by the user or the person installing or operating it.
-pagewatch only downloads the web pages you list in its settings, and only sends alerts to the
-services you set up (ntfy, Twilio for SMS or WhatsApp, or your email provider). Those services'
-own privacy policies apply to what you send through them. pagewatch has no analytics, no
-tracking and no server of its own.
+pagewatch only downloads the web pages you list in its settings (and pages shown inside
+them), and only sends alerts to the services you set up (ntfy, Twilio for SMS or WhatsApp,
+or your email provider). Those services' own privacy policies apply to what you send through
+them. pagewatch has no analytics, no tracking and no server of its own. Your settings,
+including passwords and tokens, stay on your computer.
 
 ## License
 

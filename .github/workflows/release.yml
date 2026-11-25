@@ -10,7 +10,6 @@ on:
 
 permissions:
   contents: write
-  actions: read # lets SignPath fetch the unsigned file from this run
 
 jobs:
   test:
@@ -50,44 +49,6 @@ jobs:
           codesign --force --sign - mac/pagewatch
           chmod +x mac/pagewatch
           (cd mac && zip ../dist/pagewatch-mac.zip pagewatch)
-
-      # Code signing through SignPath Foundation (see "Code signing policy" in the README).
-      # It runs only once the repository variable SIGNPATH_ORGANIZATION_ID is set; until
-      # then, releases are published unsigned as before. Each request waits for a manual
-      # approval in SignPath, for up to two hours.
-      # Needs: repository variables SIGNPATH_ORGANIZATION_ID, SIGNPATH_PROJECT_SLUG and
-      # SIGNPATH_SIGNING_POLICY_SLUG, and the secret SIGNPATH_API_TOKEN. The SignPath
-      # project's artifact configuration is in .signpath/artifact-configuration.xml.
-      - name: Upload the unsigned Windows file for signing
-        id: unsigned
-        if: vars.SIGNPATH_ORGANIZATION_ID != ''
-        uses: actions/upload-artifact@v7
-        with:
-          name: pagewatch-windows-unsigned
-          path: dist/pagewatch-windows.exe
-          retention-days: 1
-      - name: Sign the Windows file
-        if: vars.SIGNPATH_ORGANIZATION_ID != ''
-        uses: signpath/github-action-submit-signing-request@v3
-        with:
-          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
-          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
-          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
-          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
-          github-artifact-id: ${{ steps.unsigned.outputs.artifact-id }}
-          wait-for-completion: true
-          wait-for-completion-timeout-in-seconds: 7200
-          output-artifact-directory: signed
-      - name: Use the signed Windows file
-        if: vars.SIGNPATH_ORGANIZATION_ID != ''
-        run: |
-          test -s signed/pagewatch-windows.exe
-          if cmp -s signed/pagewatch-windows.exe dist/pagewatch-windows.exe; then
-            echo "The file came back unchanged, so it was not signed." >&2
-            exit 1
-          fi
-          mv -f signed/pagewatch-windows.exe dist/pagewatch-windows.exe
-
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
